@@ -10,7 +10,7 @@ const page = await browser.newPage();
 
 console.log("Navigating...");
 await page.goto(URL, { waitUntil: "networkidle" });
-await page.waitForTimeout(3000);
+await page.waitForSelector("table.main-table", { timeout: 20000 });
 
 const result = await page.evaluate((columnKeys) => {
   // main-table = standings, toistuu jokaiselle lohkolle/sarjalle sivulla
