@@ -14,19 +14,22 @@ const context = await browser.newContext({
 
 const page = await context.newPage();
 
-// Odotetaan getsubserie-vastausta — promise resolvoituu kun kutsu tulee
-const subSeriePromise = page.waitForResponse(
-  (res) => res.url().includes("getsubserie") && res.status() === 200
-);
+const responses = {};
+page.on("response", async (res) => {
+  const url = res.url();
+  if (url.includes("tulospalvelu.leijonat.fi") && !url.includes("banners")) {
+    try {
+      const json = await res.json();
+      const key = url.split("/").pop().split("?")[0];
+      responses[key] = { url, data: json };
+    } catch {}
+  }
+});
 
 await page.goto(URL, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(10000);
 
-// Odotetaan max 15s että jQuery tekee XHR-kutsun
-const subSerieResponse = await subSeriePromise.catch(() => null);
-const standings = subSerieResponse ? await subSerieResponse.json() : null;
-
-const output = { scraped_at: new Date().toISOString(), standings };
-fs.writeFileSync("./data.json", JSON.stringify(output, null, 2));
-console.log(JSON.stringify(output, null, 2));
+fs.writeFileSync("./data.json", JSON.stringify(responses, null, 2));
+console.log(JSON.stringify(responses, null, 2));
 
 await browser.close();
