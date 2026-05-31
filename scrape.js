@@ -1,5 +1,8 @@
-import { chromium } from "playwright";
+import { chromium } from "playwright-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import fs from "fs";
+
+chromium.use(StealthPlugin());
 
 const URL = "https://tulospalvelu.leijonat.fi/serie?lang=fi&season=2026&lid=67&ssid=201";
 
@@ -15,22 +18,16 @@ const context = await browser.newContext({
 const page = await context.newPage();
 
 await page.goto(URL, { waitUntil: "networkidle" });
-await page.waitForTimeout(5000);
+await page.waitForFunction(() => typeof ui !== "undefined", { timeout: 15000 });
 
-// Tehdään fetch suoraan sivun kontekstista — käyttää samaa sessiota/cookieja
-const raw = await page.evaluate(async () => {
-  const res = await fetch(
-    "https://tulospalvelu.leijonat.fi/serie/helpers/getstandings?season=2026&subSerieId=201",
-    {
-      headers: {
-        "X-Requested-With": "XMLHttpRequest",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-      },
-      credentials: "include",
-    }
-  );
-  return res.json();
-});
+const [standingsResponse] = await Promise.all([
+  page.waitForResponse(
+    (res) => res.url().includes("getstandings") && res.status() === 200
+  ),
+  page.evaluate(() => ui.StandingsOpened()),
+]);
+
+const raw = await standingsResponse.json();
 
 const standings = raw.Teams.map((t) => ({
   ranking: t.Ranking,
