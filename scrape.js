@@ -8,21 +8,25 @@ const page = await browser.newPage();
 
 await page.goto(url, { waitUntil: "networkidle" });
 
-await page.waitForTimeout(5000);
+// odota että React ehtii renderöidä
+await page.waitForTimeout(8000);
 
+// kerää perus DOM-data
 const data = await page.evaluate(() => {
+  const title = document.title;
+
+  const rows = Array.from(document.querySelectorAll("tr")).slice(0, 20).map(row => {
+    return row.innerText;
+  });
+
   return {
-    title: document.title,
-    h1: document.querySelector("h1")?.innerText || null,
-    tables: Array.from(document.querySelectorAll("table")).length
+    title,
+    sampleRows: rows
   };
 });
 
-console.log("DATA:", data);
-
-// 🔥 TÄRKEIN KOHTA (varma tallennus)
 fs.writeFileSync("./data.json", JSON.stringify(data, null, 2));
 
-console.log("Saved data.json");
+console.log("Saved hockey data");
 
 await browser.close();
