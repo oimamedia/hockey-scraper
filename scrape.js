@@ -17,17 +17,15 @@ const page = await context.newPage();
 await page.goto(URL, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(3000);
 
-// Klikataan Sarjataulukko-linkkiä ja kaapataan vastaus
 const [standingsResponse] = await Promise.all([
   page.waitForResponse(
     (res) => res.url().includes("getstandings") && res.status() === 200
   ),
-  page.click("a[href*='standings']"),
+  page.evaluate(() => ui.StandingsOpened()),
 ]);
 
 const raw = await standingsResponse.json();
 
-// Muotoillaan siistiksi
 const standings = raw.Teams.map((t) => ({
   ranking: t.Ranking,
   team: t.TeamAbbrv,
