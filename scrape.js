@@ -32,30 +32,13 @@ const raw = await page.evaluate(async () => {
       credentials: "include",
     }
   );
-  return res.json();
+  const text = await res.text();
+  return { status: res.status, body: text };
 });
 
-const standings = raw.Teams.map((t) => ({
-  ranking: t.Ranking,
-  team: t.TeamAbbrv,
-  games: t.Games,
-  wins: t.Wins,
-  otWins: t.OtWins,
-  otLosses: t.OtLooses,
-  losses: t.Looses,
-  goalsFor: t.GoalsFor,
-  goalsAgainst: t.GoalsAgainst,
-  goalDiff: t.GoalDiff,
-  points: t.Points,
-}));
+console.log("Status:", raw.status);
+console.log("Body:", raw.body.slice(0, 500));
 
-const output = {
-  scraped_at: new Date().toISOString(),
-  serie: "II-divisioona, lohko 6",
-  standings,
-};
-
-fs.writeFileSync("./data.json", JSON.stringify(output, null, 2));
-console.log(JSON.stringify(output, null, 2));
+fs.writeFileSync("./data.json", JSON.stringify(raw, null, 2));
 
 await browser.close();
