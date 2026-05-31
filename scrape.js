@@ -7,7 +7,7 @@ chromium.use(StealthPlugin());
 const URL = "https://tulospalvelu.leijonat.fi/serie?lang=fi&season=2026&lid=67&ssid=201";
 
 const browser = await chromium.launch({
-  headless: true,
+  headless: false,
   args: ["--no-sandbox", "--disable-setuid-sandbox"],
 });
 
@@ -18,27 +18,39 @@ const context = await browser.newContext({
 const page = await context.newPage();
 
 await page.goto(URL, { waitUntil: "networkidle" });
+await page.waitForFunction(() => typeof ui !== "undefined", { timeout: 30000 });
 await page.waitForTimeout(3000);
 
-const raw = await page.evaluate(async () => {
-  const res = await fetch(
-    "https://tulospalvelu.leijonat.fi/serie/helpers/getstandings?season=2026&subSerieId=201",
-    {
-      headers: {
-        "X-Requested-With": "XMLHttpRequest",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Referer": "https://tulospalvelu.leijonat.fi/serie?lang=fi&season=2026&lid=67&ssid=201",
-      },
-      credentials: "include",
-    }
-  );
-  const text = await res.text();
-  return { status: res.status, body: text };
-});
+const [standingsResponse] = await Promise.all([
+  page.waitForResponse(
+    (res) => res.url().includes("getstandings") && res.status() === 200
+  ),
+  page.evaluate(() => ui.StandingsOpened()),
+]);
 
-console.log("Status:", raw.status);
-console.log("Body:", raw.body.slice(0, 500));
+const raw = await standingsResponse.json();
 
-fs.writeFileSync("./data.json", JSON.stringify(raw, null, 2));
+const standings = raw.Teams.map((t) => ({
+  ranking: t.Ranking,
+  team: t.TeamAbbrv,
+  games: t.Games,
+  wins: t.Wins,
+  otWins: t.OtWins,
+  otLosses: t.OtLooses,
+  losses: t.Looses,
+  goalsFor: t.GoalsFor,
+  goalsAgainst: t.GoalsAgainst,
+  goalDiff: t.GoalDiff,
+  points: t.Points,
+}));
+
+const output = {
+  scraped_at: new Date().toISOString(),
+  serie: "II-divisioona, lohko 6",
+  standings,
+};
+
+fs.writeFileSync("./data.json", JSON.stringify(output, null, 2));
+console.log(JSON.stringify(output, null, 2));
 
 await browser.close();
