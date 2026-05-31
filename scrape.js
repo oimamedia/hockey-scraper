@@ -18,13 +18,12 @@ const context = await browser.newContext({
 const page = await context.newPage();
 
 await page.goto(URL, { waitUntil: "networkidle" });
-await page.waitForTimeout(8000);
 
 const [standingsResponse] = await Promise.all([
   page.waitForResponse(
     (res) => res.url().includes("getstandings") && res.status() === 200
   ),
-  page.evaluate(() => ui.StandingsOpened()),
+  page.click("li.standings-nav-link"),
 ]);
 
 const raw = await standingsResponse.json();
