@@ -6,7 +6,6 @@ const URL = "https://tulospalvelu.leijonat.fi/serie?lang=fi&season=2026&lid=67&s
 const browser = await chromium.launch();
 const page = await browser.newPage();
 
-// Kuunnellaan kaikkia network-pyyntöjä
 const requests = [];
 page.on("request", (req) => {
   if (req.resourceType() === "xhr" || req.resourceType() === "fetch") {
