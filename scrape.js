@@ -20,6 +20,19 @@ const page = await context.newPage();
 await page.goto(URL, { waitUntil: "networkidle" });
 await page.waitForFunction(() => typeof ui !== "undefined", { timeout: 15000 });
 
+// Kaapataan kaikki getgames-vastaukset
+const allGames = [];
+page.on("response", async (res) => {
+  if (res.url().includes("getgames")) {
+    try {
+      const json = await res.json();
+      const games = json.flatMap((d) => d.Games || []);
+      allGames.push(...games);
+    } catch {}
+  }
+});
+
+// Haetaan standings
 const [standingsResponse] = await Promise.all([
   page.waitForResponse(
     (res) => res.url().includes("getstandings") && res.status() === 200
@@ -43,13 +56,44 @@ const standings = raw.Teams.map((t) => ({
   points: t.Points,
 }));
 
+// Haetaan pelit — selataan kaikki pelipäivät läpi
+await page.evaluate(() => ui.GamesOpened());
+await page.waitForTimeout(2000);
+
+// Selataan eteenpäin 30 kertaa kerätäksemme kaikki pelit
+for (let i = 0; i < 30; i++) {
+  await page.evaluate(() => ui.ScrollNextDate());
+  await page.waitForTimeout(500);
+}
+
+await page.waitForTimeout(2000);
+
+// Järjestetään pelit päivämäärän mukaan, uusin ensin
+const sortedGames = allGames
+  .filter((g, i, arr) => arr.findIndex((x) => x.GameID === g.GameID) === i) // deduplikointi
+  .map((g) => ({
+    gameId: g.GameID,
+    date: g.GameDateDB,
+    dateShort: g.GameDateShort,
+    time: g.GameTime,
+    homeTeam: g.HomeTeamAbbrv,
+    awayTeam: g.AwayTeamAbbrv,
+    homeGoals: g.HomeGoals,
+    awayGoals: g.AwayGoals,
+    status: g.GameStatus, // 0=tuleva, 2=pelattu
+    rink: g.RinkName,
+    dow: g.DowFI,
+  }))
+  .sort((a, b) => new Date(b.date) - new Date(a.date));
+
 const output = {
   scraped_at: new Date().toISOString(),
   serie: "II-divisioona, lohko 6",
   standings,
+  games: sortedGames,
 };
 
 fs.writeFileSync("./data.json", JSON.stringify(output, null, 2));
-console.log(JSON.stringify(output, null, 2));
+console.log(`Standings: ${standings.length} joukkuetta, Games: ${sortedGames.length} peliä`);
 
 await browser.close();
