@@ -17,22 +17,10 @@ const context = await browser.newContext({
 
 const page = await context.newPage();
 
-await page.goto(URL, { waitUntil: "networkidle" });
+// ✅ VANHA TOIMIVA KOODi — ei muutoksia
+await page.goto(URL, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => typeof ui !== "undefined", { timeout: 15000 });
 
-// Kaapataan kaikki getgames-vastaukset
-const allGames = [];
-page.on("response", async (res) => {
-  if (res.url().includes("getgames")) {
-    try {
-      const json = await res.json();
-      const games = json.flatMap((d) => d.Games || []);
-      allGames.push(...games);
-    } catch {}
-  }
-});
-
-// Haetaan standings
 const [standingsResponse] = await Promise.all([
   page.waitForResponse(
     (res) => res.url().includes("getstandings") && res.status() === 200
@@ -56,21 +44,30 @@ const standings = raw.Teams.map((t) => ({
   points: t.Points,
 }));
 
-// Haetaan pelit — selataan kaikki pelipäivät läpi
+// ✅ UUSI — games-kaappaus standings-kaappauksen jälkeen
+const allGames = [];
+page.on("response", async (res) => {
+  if (res.url().includes("getgames")) {
+    try {
+      const json = await res.json();
+      const games = json.flatMap((d) => d.Games || []);
+      allGames.push(...games);
+    } catch {}
+  }
+});
+
 await page.evaluate(() => ui.GamesOpened());
 await page.waitForTimeout(2000);
 
-// Selataan eteenpäin 30 kertaa kerätäksemme kaikki pelit
 for (let i = 0; i < 30; i++) {
   await page.evaluate(() => ui.ScrollNextDate());
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(300);
 }
 
 await page.waitForTimeout(2000);
 
-// Järjestetään pelit päivämäärän mukaan, uusin ensin
 const sortedGames = allGames
-  .filter((g, i, arr) => arr.findIndex((x) => x.GameID === g.GameID) === i) // deduplikointi
+  .filter((g, i, arr) => arr.findIndex((x) => x.GameID === g.GameID) === i)
   .map((g) => ({
     gameId: g.GameID,
     date: g.GameDateDB,
@@ -80,7 +77,7 @@ const sortedGames = allGames
     awayTeam: g.AwayTeamAbbrv,
     homeGoals: g.HomeGoals,
     awayGoals: g.AwayGoals,
-    status: g.GameStatus, // 0=tuleva, 2=pelattu
+    status: g.GameStatus,
     rink: g.RinkName,
     dow: g.DowFI,
   }))
