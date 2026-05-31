@@ -20,6 +20,7 @@ const page = await context.newPage();
 // ✅ VANHA TOIMIVA KOODi — ei muutoksia
 await page.goto(URL, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => typeof ui !== "undefined", { timeout: 15000 });
+await page.waitForTimeout(5000);
 
 const [standingsResponse] = await Promise.all([
   page.waitForResponse(
