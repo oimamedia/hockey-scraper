@@ -18,15 +18,22 @@ const context = await browser.newContext({
 const page = await context.newPage();
 
 await page.goto(URL, { waitUntil: "networkidle" });
+await page.waitForTimeout(3000);
 
-const [standingsResponse] = await Promise.all([
-  page.waitForResponse(
-    (res) => res.url().includes("getstandings") && res.status() === 200
-  ),
-  page.click("li.standings-nav-link"),
-]);
-
-const raw = await standingsResponse.json();
+const raw = await page.evaluate(async () => {
+  const res = await fetch(
+    "https://tulospalvelu.leijonat.fi/serie/helpers/getstandings?season=2026&subSerieId=201",
+    {
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Referer": "https://tulospalvelu.leijonat.fi/serie?lang=fi&season=2026&lid=67&ssid=201",
+      },
+      credentials: "include",
+    }
+  );
+  return res.json();
+});
 
 const standings = raw.Teams.map((t) => ({
   ranking: t.Ranking,
