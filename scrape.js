@@ -18,7 +18,7 @@ const context = await browser.newContext({
 const page = await context.newPage();
 
 await page.goto(URL, { waitUntil: "networkidle" });
-await page.waitForTimeout(5000);
+await page.waitForFunction(() => typeof ui !== "undefined", { timeout: 15000 });
 
 const [standingsResponse] = await Promise.all([
   page.waitForResponse(
