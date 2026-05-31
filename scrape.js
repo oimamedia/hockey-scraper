@@ -8,28 +8,21 @@ const page = await browser.newPage();
 
 await page.goto(url, { waitUntil: "networkidle" });
 
-// odotetaan että React ehtii renderöidä datan
 await page.waitForTimeout(5000);
 
-// otetaan sivun data DOM:sta
 const data = await page.evaluate(() => {
-  const title = document.querySelector("h1")?.innerText || null;
-
-  // yritetään löytää taulukot (sarjataulukko / statsit)
-  const tables = Array.from(document.querySelectorAll("table")).map(t => {
-    return {
-      html: t.innerHTML
-    };
-  });
-
   return {
-    title,
-    tables
+    title: document.title,
+    h1: document.querySelector("h1")?.innerText || null,
+    tables: Array.from(document.querySelectorAll("table")).length
   };
 });
 
-fs.writeFileSync("data.json", JSON.stringify(data, null, 2));
+console.log("DATA:", data);
 
-console.log("Saved data");
+// 🔥 TÄRKEIN KOHTA (varma tallennus)
+fs.writeFileSync("./data.json", JSON.stringify(data, null, 2));
+
+console.log("Saved data.json");
 
 await browser.close();
