@@ -14,16 +14,40 @@ const context = await browser.newContext({
 
 const page = await context.newPage();
 
-const standingsPromise = page.waitForResponse(
-  (res) => res.url().includes("getstandings") && res.status() === 200
-);
-
 await page.goto(URL, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(3000);
 
-const standingsResponse = await standingsPromise.catch(() => null);
-const standings = standingsResponse ? await standingsResponse.json() : null;
+// Klikataan Sarjataulukko-linkkiä ja kaapataan vastaus
+const [standingsResponse] = await Promise.all([
+  page.waitForResponse(
+    (res) => res.url().includes("getstandings") && res.status() === 200
+  ),
+  page.click("a[href*='standings']"),
+]);
 
-const output = { scraped_at: new Date().toISOString(), standings };
+const raw = await standingsResponse.json();
+
+// Muotoillaan siistiksi
+const standings = raw.Teams.map((t) => ({
+  ranking: t.Ranking,
+  team: t.TeamAbbrv,
+  games: t.Games,
+  wins: t.Wins,
+  otWins: t.OtWins,
+  otLosses: t.OtLooses,
+  losses: t.Looses,
+  goalsFor: t.GoalsFor,
+  goalsAgainst: t.GoalsAgainst,
+  goalDiff: t.GoalDiff,
+  points: t.Points,
+}));
+
+const output = {
+  scraped_at: new Date().toISOString(),
+  serie: "II-divisioona, lohko 6",
+  standings,
+};
+
 fs.writeFileSync("./data.json", JSON.stringify(output, null, 2));
 console.log(JSON.stringify(output, null, 2));
 
