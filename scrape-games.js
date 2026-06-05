@@ -20,37 +20,11 @@ await page.goto(URL, { waitUntil: "networkidle" });
 await page.waitForFunction(() => typeof ui !== "undefined", { timeout: 30000 });
 await page.waitForTimeout(3000);
 
-const [gamesResponse] = await Promise.all([
-  page.waitForResponse(
-    (res) => res.url().includes("getgames") && res.status() === 200
-  ),
-  page.evaluate(() => ui.GamesOpened()),
-]);
-
-const raw = await gamesResponse.json();
-
-const games = (raw.Games ?? []).map((g) => ({
-  id:        g.GameId,
-  date:      g.Date,
-  time:      g.Time,
-  home:      g.HomeTeamAbbrv,
-  away:      g.AwayTeamAbbrv,
-  homeGoals: g.HomeGoals ?? null,
-  awayGoals: g.AwayGoals ?? null,
-  played:    g.Played ?? false,
-  arena:     g.Arena ?? null,
-}));
-
-const output = {
-  scraped_at: new Date().toISOString(),
-  serie: "II-divisioona, lohko 6",
-  total:    games.length,
-  played:   games.filter((g) => g.played).length,
-  upcoming: games.filter((g) => !g.played).length,
-  games,
-};
-
-fs.writeFileSync("./games.json", JSON.stringify(output, null, 2));
-console.log(`Saved ${games.length} games to games.json`);
+// Tulostetaan kaikki ui-objektin funktiot
+const uiFunctions = await page.evaluate(() => {
+  return Object.getOwnPropertyNames(ui)
+    .filter(k => typeof ui[k] === "function");
+});
+console.log("ui functions:", uiFunctions);
 
 await browser.close();
