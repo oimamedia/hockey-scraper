@@ -7,7 +7,7 @@ chromium.use(StealthPlugin());
 const URL = "https://tulospalvelu.leijonat.fi/serie?lang=fi&season=2026&lid=67&ssid=201";
 
 const browser = await chromium.launch({
-  headless: true,
+  headless: false,
   args: ["--no-sandbox", "--disable-setuid-sandbox"],
 });
 
