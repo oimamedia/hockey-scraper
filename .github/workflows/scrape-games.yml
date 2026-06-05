@@ -1,22 +1,19 @@
 name: Scrape Games
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 * * * *"   # joka tunti
-  workflow_dispatch:        # manuaalinen ajo napista
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: 24
 
       - name: Install dependencies
         run: npm install
@@ -24,13 +21,29 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
-      - name: Scrape games
+      - name: Start Xvfb
+        run: |
+          sudo apt-get install -y xvfb
+          Xvfb :99 -screen 0 1280x720x24 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+
+      - name: Run scraper
         run: node scrape-games.js
+
+      - name: Show output
+        run: cat games.json
+
+      - name: Upload data as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hockey-games-${{ github.run_id }}
+          path: games.json
+          retention-days: 30
 
       - name: Commit games.json
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add games.json
           git diff --staged --quiet || git commit -m "chore: update games [skip ci]"
           git push
